@@ -103,13 +103,13 @@ class SenateScraper:
         try:
             logger.info("Filling out search form")
 
-            # Select report type checkbox
+            # Select report type checkbox for Periodic Transactions
             report_checkbox = WebDriverWait(self.driver, TIMEOUT).until(
-                EC.element_to_be_clickable((By.ID, "reportTypes"))
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "input[id='reportTypes'][value='11']"))
             )
             if not report_checkbox.is_selected():
                 report_checkbox.click()
-                logger.info("Selected report type checkbox")
+                logger.info("Selected Periodic Transactions checkbox")
 
             # Enter today's date
             today_date = datetime.now().strftime("%m/%d/%Y")
@@ -137,7 +137,58 @@ class SenateScraper:
             logger.error(f"Error filling search form: {str(e)}")
             return False
 
+    def check_empty_results(self) -> bool:
+        """
+        Check if the search returned no results.
+
+        Returns:
+            bool: True if no results were found, False otherwise
+        """
+        try:
+            empty_results = self.driver.find_elements(By.CLASS_NAME, "dataTables_empty")
+            if empty_results:
+                logger.info("No reports found for today")
+                return True
+            return False
+
+        except Exception as e:
+            logger.error(f"Error checking results: {str(e)}")
+            return False
+
+    def extract_report_urls(self) -> List[str]:
+        """
+        Extract URLs for all report links from the results table.
+
+        Returns:
+            List[str]: List of report URLs found
+        """
+        try:
+            logger.info("Starting to extract report URLs from results table")
+            urls = []
+
+            # Find the tbody element
+            tbody = self.driver.find_element(By.TAG_NAME, "tbody")
+            # Find all links within the tbody
+            links = tbody.find_elements(By.TAG_NAME, "a")
+
+            for link in links:
+                url = link.get_attribute('href')
+                if url:
+                    urls.append(url)
+                    logger.info(f"Found report URL: {url}")
+
+            logger.info(f"Extracted {len(urls)} report URLs")
+            return urls
+
+        except Exception as e:
+            logger.error(f"Error extracting report URLs: {str(e)}")
+            return []
+
     def cleanup(self) -> None:
+        """Clean up resources."""
+        logger.info("Cleaning up resources...")
+        if hasattr(self, 'driver'):
+            self.driver.quit()
         """Clean up resources."""
         logger.info("Cleaning up resources...")
         if hasattr(self, 'driver'):
@@ -163,7 +214,18 @@ if __name__ == "__main__":
                 logger.info("Successfully initialized search page")
                 if scraper.fill_search_form():
                     logger.info("Successfully submitted search form")
-                    # Add next steps here
+                    if scraper.check_empty_results():
+                        logger.info("Exiting as no reports were found")
+                        exit(0)
+
+                    # Extract report URLs if results exist
+                    report_urls = scraper.extract_report_urls()
+                    if not report_urls:
+                        logger.error("Failed to extract any report URLs")
+                        exit(1)
+
+                    logger.info(f"Successfully extracted {len(report_urls)} report URLs")
+                    # Add next steps here for handling results
 
     except Exception as e:
         logger.error(f"An error occurred: {str(e)}")
