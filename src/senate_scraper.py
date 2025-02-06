@@ -4,9 +4,10 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import time
 from datetime import datetime
+import json
 
 # Module level constants
 TIMEOUT = 10
@@ -184,11 +185,108 @@ class SenateScraper:
             logger.error(f"Error extracting report URLs: {str(e)}")
             return []
 
+    def process_single_report(self, url: str) -> Optional[Dict[str, Any]]:
+        """
+        Process a single report URL and extract relevant information.
+
+        Args:
+            url (str): URL of the report to process
+
+        Returns:
+            Optional[Dict[str, Any]]: Dictionary containing extracted information or None if extraction fails
+        """
+        try:
+            logger.info(f"Processing report at URL: {url}")
+            self.driver.get(url)
+
+            # Wait for the page to load
+            time.sleep(3)
+
+            # Extract basic information
+            report_data = {
+                "url": url,
+                "timestamp": datetime.now().isoformat(),
+                "transactions": []
+            }
+
+            # Wait for and extract the transactions table
+            table = WebDriverWait(self.driver, TIMEOUT).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "table.table"))
+            )
+
+            # Extract table rows (skip header row)
+            rows = table.find_elements(By.TAG_NAME, "tr")[1:]
+
+            for row in rows:
+                cells = row.find_elements(By.TAG_NAME, "td")
+                if len(cells) >= 9:  # Ensure we have all columns
+                    transaction = {
+                        "number": cells[0].text.strip(),
+                        "transaction_date": cells[1].text.strip(),
+                        "owner": cells[2].text.strip(),
+                        "ticker": cells[3].text.strip(),
+                        "asset_name": cells[4].text.strip(),
+                        "asset_type": cells[5].text.strip(),
+                        "type": cells[6].text.strip(),
+                        "amount": cells[7].text.strip(),
+                        "comment": cells[8].text.strip()
+                    }
+                    report_data["transactions"].append(transaction)
+                    logger.info(f"Extracted transaction: {transaction}")
+
+            return report_data
+
+        except TimeoutException:
+            logger.error(f"Timeout while processing report at {url}")
+            return None
+        except Exception as e:
+            logger.error(f"Error processing report at {url}: {str(e)}")
+            return None
+
+    def process_all_reports(self, report_urls: List[str]) -> List[Dict[str, Any]]:
+        """
+        Process all report URLs and collect their information.
+
+        Args:
+            report_urls (List[str]): List of report URLs to process
+
+        Returns:
+            List[Dict[str, Any]]: List of dictionaries containing extracted information
+        """
+        all_reports = []
+
+        for i, url in enumerate(report_urls, 1):
+            logger.info(f"Processing report {i} of {len(report_urls)}: {url}")
+            report_data = self.process_single_report(url)
+            if report_data:
+                all_reports.append(report_data)
+
+        return all_reports
+
+    def save_reports_to_json(self, reports: List[Dict[str, Any]], filename: str = None) -> bool:
+        """
+        Save the collected reports to a JSON file with the current date.
+
+        Args:
+            reports (List[Dict[str, Any]]): List of report dictionaries to save
+            filename (str, optional): Name of the output JSON file. If None, generates with date
+
+        Returns:
+            bool: True if save was successful, False otherwise
+        """
+        if filename is None:
+            today = datetime.now().strftime("%Y-%m-%d")
+            filename = f"senate_reports_{today}.json"
+        try:
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(reports, f, indent=2, ensure_ascii=False)
+            logger.info(f"Successfully saved reports to {filename}")
+            return True
+        except Exception as e:
+            logger.error(f"Error saving reports to JSON: {str(e)}")
+            return False
+
     def cleanup(self) -> None:
-        """Clean up resources."""
-        logger.info("Cleaning up resources...")
-        if hasattr(self, 'driver'):
-            self.driver.quit()
         """Clean up resources."""
         logger.info("Cleaning up resources...")
         if hasattr(self, 'driver'):
@@ -225,7 +323,16 @@ if __name__ == "__main__":
                         exit(1)
 
                     logger.info(f"Successfully extracted {len(report_urls)} report URLs")
-                    # Add next steps here for handling results
+
+                    # Process all reports and save to JSON
+                    all_reports = scraper.process_all_reports(report_urls)
+                    if all_reports:
+                        scraper.save_reports_to_json(all_reports)
+                        logger.info("Successfully completed report processing")
+                    else:
+                        logger.error("No reports were successfully processed")
+                        exit(1)
 
     except Exception as e:
         logger.error(f"An error occurred: {str(e)}")
+        exit(1)
