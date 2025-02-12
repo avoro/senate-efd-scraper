@@ -8,6 +8,12 @@ from typing import List, Optional, Dict, Any
 import time
 from datetime import datetime
 import json
+import os
+from dotenv import load_dotenv
+from email_client import EmailClient
+
+# Load environment variables
+load_dotenv()
 
 # Module level constants
 TIMEOUT = 10
@@ -21,15 +27,17 @@ logger = logging.getLogger(__name__)
 class SenateScraper:
     """A class to scrape financial disclosure data from the Senate website."""
 
-    def __init__(self, headless: bool = True):
+    def __init__(self, headless: bool = True, email_client: Optional[EmailClient] = None):
         """
         Initialize the scraper with configuration.
 
         Args:
             headless (bool): Whether to run browser in headless mode
+            email_client (Optional[EmailClient]): EmailClient instance for notifications
         """
         logger.info("Initializing SenateScraper...")
         self.driver = self._setup_driver(headless)
+        self.email_client = email_client
 
     def _setup_driver(self, headless: bool) -> webdriver.Chrome:
         """
@@ -48,6 +56,22 @@ class SenateScraper:
         options.add_argument('--disable-dev-shm-usage')
 
         return webdriver.Chrome(options=options)
+
+    def send_notification(self, subject: str, body: str) -> None:
+        """
+        Send email notification if email client is configured.
+
+        Args:
+            subject (str): Email subject
+            body (str): Email body
+        """
+        if self.email_client:
+            to_email = os.getenv("GMAIL_EMAIL")
+            self.email_client.send_email(
+                to_emails=[to_email],
+                subject=subject,
+                body=body
+            )
 
     def navigate_to_search(self) -> bool:
         """
@@ -307,32 +331,49 @@ class SenateScraper:
 
 if __name__ == "__main__":
     try:
-        with SenateScraper(headless=False) as scraper:
+        # Initialize email client
+        email = os.getenv("GMAIL_EMAIL")
+        password = os.getenv("GMAIL_PASSWORD")
+
+        if not email or not password:
+            logger.warning("Email credentials not found. Running without email notifications.")
+            email_client = None
+        else:
+            email_client = EmailClient(email=email, password=password)
+
+        with SenateScraper(headless=False, email_client=email_client) as scraper:
             if scraper.navigate_to_search() and scraper.accept_agreement():
                 logger.info("Successfully initialized search page")
                 if scraper.fill_search_form():
                     logger.info("Successfully submitted search form")
-                    if scraper.check_empty_results():
-                        logger.info("Exiting as no reports were found")
-                        exit(0)
-
+                    # Process and send notification only for success/failure of report processing
                     # Extract report URLs if results exist
                     report_urls = scraper.extract_report_urls()
-                    if not report_urls:
-                        logger.error("Failed to extract any report URLs")
-                        exit(1)
+                    all_reports = scraper.process_all_reports(report_urls) if report_urls else []
 
-                    logger.info(f"Successfully extracted {len(report_urls)} report URLs")
-
-                    # Process all reports and save to JSON
-                    all_reports = scraper.process_all_reports(report_urls)
+                    today = datetime.now().strftime("%Y-%m-%d")
                     if all_reports:
                         scraper.save_reports_to_json(all_reports)
-                        logger.info("Successfully completed report processing")
+                        message = f"Successfully completed report processing. Processed {len(all_reports)} reports."
+                        logger.info(message)
+                        scraper.send_notification(
+                            subject=f"Senate Report {today} - Success",
+                            body=message
+                        )
                     else:
-                        logger.error("No reports were successfully processed")
-                        exit(1)
+                        message = "No reports were successfully processed"
+                        logger.error(message)
+                        scraper.send_notification(
+                            subject=f"Senate Report {today} - No Reports",
+                            body=message
+                        )
 
     except Exception as e:
-        logger.error(f"An error occurred: {str(e)}")
+        error_message = f"An error occurred: {str(e)}"
+        logger.error(error_message)
+        if 'scraper' in locals() and hasattr(scraper, 'send_notification'):
+            scraper.send_notification(
+                subject="Error - Unexpected Exception",
+                body=error_message
+            )
         exit(1)
