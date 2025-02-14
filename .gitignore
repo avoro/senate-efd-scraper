@@ -12,3 +12,9 @@ venv/
 
 # Generated reports
 senate_reports_*.json
+
+# Test coverage
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/

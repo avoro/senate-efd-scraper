@@ -10,7 +10,7 @@ from datetime import datetime
 import json
 import os
 from dotenv import load_dotenv
-from email_client import EmailClient
+from src.email_client import EmailClient
 
 # Load environment variables
 load_dotenv()
