@@ -1,2 +1,14 @@
+# IDE
 .idea/
+
+# Python cache files
+src/__pycache__/
+
+# Virtual environment
+venv/
+
+# Environment variables
 .env
+
+# Generated reports
+senate_reports_*.json

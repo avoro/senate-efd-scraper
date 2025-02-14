@@ -57,20 +57,22 @@ class SenateScraper:
 
         return webdriver.Chrome(options=options)
 
-    def send_notification(self, subject: str, body: str) -> None:
+    def send_notification(self, subject: str, body: str, attachments: Optional[List[str]] = None) -> None:
         """
         Send email notification if email client is configured.
 
         Args:
             subject (str): Email subject
             body (str): Email body
+            attachments (Optional[List[str]]): List of file paths to attach to the email
         """
         if self.email_client:
             to_email = os.getenv("GMAIL_EMAIL")
             self.email_client.send_email(
                 to_emails=[to_email],
                 subject=subject,
-                body=body
+                body=body,
+                attachments=attachments
             )
 
     def navigate_to_search(self) -> bool:
@@ -287,7 +289,7 @@ class SenateScraper:
 
         return all_reports
 
-    def save_reports_to_json(self, reports: List[Dict[str, Any]], filename: str = None) -> bool:
+    def save_reports_to_json(self, reports: List[Dict[str, Any]], filename: str = None) -> Optional[str]:
         """
         Save the collected reports to a JSON file with the current date.
 
@@ -296,7 +298,7 @@ class SenateScraper:
             filename (str, optional): Name of the output JSON file. If None, generates with date
 
         Returns:
-            bool: True if save was successful, False otherwise
+            Optional[str]: Path to the saved file if successful, None otherwise
         """
         if filename is None:
             today = datetime.now().strftime("%Y-%m-%d")
@@ -305,10 +307,10 @@ class SenateScraper:
             with open(filename, 'w', encoding='utf-8') as f:
                 json.dump(reports, f, indent=2, ensure_ascii=False)
             logger.info(f"Successfully saved reports to {filename}")
-            return True
+            return filename
         except Exception as e:
             logger.error(f"Error saving reports to JSON: {str(e)}")
-            return False
+            return None
 
     def cleanup(self) -> None:
         """Clean up resources."""
@@ -353,13 +355,16 @@ if __name__ == "__main__":
 
                     today = datetime.now().strftime("%Y-%m-%d")
                     if all_reports:
-                        scraper.save_reports_to_json(all_reports)
-                        message = f"Successfully completed report processing. Processed {len(all_reports)} reports."
-                        logger.info(message)
-                        scraper.send_notification(
-                            subject=f"Senate Report {today} - Success",
-                            body=message
-                        )
+                        # Save reports and get the filename
+                        report_file = scraper.save_reports_to_json(all_reports)
+                        if report_file:
+                            message = f"Successfully completed report processing. Processed {len(all_reports)} reports."
+                            logger.info(message)
+                            scraper.send_notification(
+                                subject=f"Senate Report {today} - Success",
+                                body=message,
+                                attachments=[report_file]
+                            )
                     else:
                         message = "No reports were successfully processed"
                         logger.error(message)

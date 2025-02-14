@@ -3,6 +3,7 @@ import smtplib
 import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.application import MIMEApplication
 from typing import List, Optional
 from dotenv import load_dotenv
 
@@ -41,12 +42,13 @@ class EmailClient:
         self.password = password
 
     def send_email(
-        self,
-        to_emails: List[str],
-        subject: str,
-        body: str,
-        from_email: Optional[str] = None,
-        is_html: bool = False,
+            self,
+            to_emails: List[str],
+            subject: str,
+            body: str,
+            from_email: Optional[str] = None,
+            is_html: bool = False,
+            attachments: Optional[List[str]] = None,
     ) -> bool:
         """
         Send an email using Gmail's SMTP server.
@@ -57,6 +59,7 @@ class EmailClient:
             body (str): The body of the email.
             from_email (Optional[str], optional): The sender's email address. Defaults to the email used in initialization.
             is_html (bool, optional): Whether the body is HTML. Defaults to False.
+            attachments (Optional[List[str]], optional): List of file paths to attach to the email.
 
         Returns:
             bool: True if the email was sent successfully, False otherwise.
@@ -76,6 +79,21 @@ class EmailClient:
         else:
             msg.attach(MIMEText(body, "plain"))
 
+        # Attach files if provided
+        if attachments:
+            for filepath in attachments:
+                try:
+                    with open(filepath, 'rb') as f:
+                        part = MIMEApplication(f.read(), Name=os.path.basename(filepath))
+
+                    # Add header for attachment
+                    part['Content-Disposition'] = f'attachment; filename="{os.path.basename(filepath)}"'
+                    msg.attach(part)
+                    logger.info(f"Attached file: {filepath}")
+                except Exception as e:
+                    logger.error(f"Failed to attach file {filepath}: {e}")
+                    return False
+
         try:
             # Connect to the SMTP server
             with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
@@ -88,33 +106,3 @@ class EmailClient:
         except smtplib.SMTPException as e:
             logger.error(f"Failed to send email: {e}")
             return False
-
-
-# Example usage
-if __name__ == "__main__":
-    # Load credentials from environment variables
-    EMAIL = os.getenv("GMAIL_EMAIL")
-    PASSWORD = os.getenv("GMAIL_PASSWORD")
-
-    if not EMAIL or not PASSWORD:
-        raise ValueError("Please set GMAIL_EMAIL and GMAIL_PASSWORD in the .env file.")
-
-    # Initialize the email client
-    email_client = EmailClient(email=EMAIL, password=PASSWORD)
-
-    # Send an email
-    to_emails = [EMAIL]
-    subject = "Test Email"
-    body = "This is a test email sent using Python."
-
-    success = email_client.send_email(
-        to_emails=[EMAIL],
-        subject="Test Email",
-        body="This is a test email.",
-        from_email="no-reply@gmail.com",
-    )
-
-    if success:
-        print("Email sent successfully!")
-    else:
-        print("Failed to send email.")
