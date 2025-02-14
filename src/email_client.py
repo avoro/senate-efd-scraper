@@ -26,7 +26,13 @@ class EmailClient:
         password (str): The sender's email password or app password.
     """
 
-    def __init__(self, email: str, password: str, smtp_server: str = "smtp.gmail.com", smtp_port: int = 587):
+    def __init__(
+        self,
+        email: str,
+        password: str,
+        smtp_server: str = "smtp.gmail.com",
+        smtp_port: int = 587,
+    ):
         """
         Initialize the EmailClient.
 
@@ -42,13 +48,13 @@ class EmailClient:
         self.password = password
 
     def send_email(
-            self,
-            to_emails: List[str],
-            subject: str,
-            body: str,
-            from_email: Optional[str] = None,
-            is_html: bool = False,
-            attachments: Optional[List[str]] = None,
+        self,
+        to_emails: List[str],
+        subject: str,
+        body: str,
+        from_email: Optional[str] = None,
+        is_html: bool = False,
+        attachments: Optional[List[str]] = None,
     ) -> bool:
         """
         Send an email using Gmail's SMTP server.
@@ -83,11 +89,15 @@ class EmailClient:
         if attachments:
             for filepath in attachments:
                 try:
-                    with open(filepath, 'rb') as f:
-                        part = MIMEApplication(f.read(), Name=os.path.basename(filepath))
+                    with open(filepath, "rb") as f:
+                        part = MIMEApplication(
+                            f.read(), Name=os.path.basename(filepath)
+                        )
 
                     # Add header for attachment
-                    part['Content-Disposition'] = f'attachment; filename="{os.path.basename(filepath)}"'
+                    part["Content-Disposition"] = (
+                        f'attachment; filename="{os.path.basename(filepath)}"'
+                    )
                     msg.attach(part)
                     logger.info(f"Attached file: {filepath}")
                 except Exception as e:
@@ -99,7 +109,9 @@ class EmailClient:
             with smtplib.SMTP(self.smtp_server, self.smtp_port) as server:
                 server.starttls()  # Upgrade the connection to secure
                 server.login(self.email, self.password)  # Authenticate
-                server.sendmail(from_email, to_emails, msg.as_string())  # Send the email
+                server.sendmail(
+                    from_email, to_emails, msg.as_string()
+                )  # Send the email
 
             logger.info(f"Email sent successfully to {to_emails}")
             return True

@@ -27,7 +27,9 @@ logger = logging.getLogger(__name__)
 class SenateScraper:
     """A class to scrape financial disclosure data from the Senate website."""
 
-    def __init__(self, headless: bool = True, email_client: Optional[EmailClient] = None):
+    def __init__(
+        self, headless: bool = True, email_client: Optional[EmailClient] = None
+    ):
         """
         Initialize the scraper with configuration.
 
@@ -51,13 +53,15 @@ class SenateScraper:
         """
         options = webdriver.ChromeOptions()
         if headless:
-            options.add_argument('--headless')
-        options.add_argument('--no-sandbox')
-        options.add_argument('--disable-dev-shm-usage')
+            options.add_argument("--headless")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
 
         return webdriver.Chrome(options=options)
 
-    def send_notification(self, subject: str, body: str, attachments: Optional[List[str]] = None) -> None:
+    def send_notification(
+        self, subject: str, body: str, attachments: Optional[List[str]] = None
+    ) -> None:
         """
         Send email notification if email client is configured.
 
@@ -72,7 +76,7 @@ class SenateScraper:
                 to_emails=[to_email],
                 subject=subject,
                 body=body,
-                attachments=attachments
+                attachments=attachments,
             )
 
     def navigate_to_search(self) -> bool:
@@ -132,7 +136,9 @@ class SenateScraper:
 
             # Select report type checkbox for Periodic Transactions
             report_checkbox = WebDriverWait(self.driver, TIMEOUT).until(
-                EC.element_to_be_clickable((By.CSS_SELECTOR, "input[id='reportTypes'][value='11']"))
+                EC.element_to_be_clickable(
+                    (By.CSS_SELECTOR, "input[id='reportTypes'][value='11']")
+                )
             )
             if not report_checkbox.is_selected():
                 report_checkbox.click()
@@ -147,7 +153,9 @@ class SenateScraper:
             logger.info(f"Entered date: {today_date}")
 
             # Click search button
-            search_button = self.driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
+            search_button = self.driver.find_element(
+                By.CSS_SELECTOR, "button[type='submit']"
+            )
             search_button.click()
             logger.info("Clicked search button")
 
@@ -199,7 +207,7 @@ class SenateScraper:
             links = tbody.find_elements(By.TAG_NAME, "a")
 
             for link in links:
-                url = link.get_attribute('href')
+                url = link.get_attribute("href")
                 if url:
                     urls.append(url)
                     logger.info(f"Found report URL: {url}")
@@ -232,7 +240,7 @@ class SenateScraper:
             report_data = {
                 "url": url,
                 "timestamp": datetime.now().isoformat(),
-                "transactions": []
+                "transactions": [],
             }
 
             # Wait for and extract the transactions table
@@ -255,7 +263,7 @@ class SenateScraper:
                         "asset_type": cells[5].text.strip(),
                         "type": cells[6].text.strip(),
                         "amount": cells[7].text.strip(),
-                        "comment": cells[8].text.strip()
+                        "comment": cells[8].text.strip(),
                     }
                     report_data["transactions"].append(transaction)
                     logger.info(f"Extracted transaction: {transaction}")
@@ -289,7 +297,9 @@ class SenateScraper:
 
         return all_reports
 
-    def save_reports_to_json(self, reports: List[Dict[str, Any]], filename: str = None) -> Optional[str]:
+    def save_reports_to_json(
+        self, reports: List[Dict[str, Any]], filename: str = None
+    ) -> Optional[str]:
         """
         Save the collected reports to a JSON file with the current date.
 
@@ -304,7 +314,7 @@ class SenateScraper:
             today = datetime.now().strftime("%Y-%m-%d")
             filename = f"senate_reports_{today}.json"
         try:
-            with open(filename, 'w', encoding='utf-8') as f:
+            with open(filename, "w", encoding="utf-8") as f:
                 json.dump(reports, f, indent=2, ensure_ascii=False)
             logger.info(f"Successfully saved reports to {filename}")
             return filename
@@ -315,7 +325,7 @@ class SenateScraper:
     def cleanup(self) -> None:
         """Clean up resources."""
         logger.info("Cleaning up resources...")
-        if hasattr(self, 'driver'):
+        if hasattr(self, "driver"):
             self.driver.quit()
 
     def __enter__(self):
@@ -338,7 +348,9 @@ if __name__ == "__main__":
         password = os.getenv("GMAIL_PASSWORD")
 
         if not email or not password:
-            logger.warning("Email credentials not found. Running without email notifications.")
+            logger.warning(
+                "Email credentials not found. Running without email notifications."
+            )
             email_client = None
         else:
             email_client = EmailClient(email=email, password=password)
@@ -351,7 +363,9 @@ if __name__ == "__main__":
                     # Process and send notification only for success/failure of report processing
                     # Extract report URLs if results exist
                     report_urls = scraper.extract_report_urls()
-                    all_reports = scraper.process_all_reports(report_urls) if report_urls else []
+                    all_reports = (
+                        scraper.process_all_reports(report_urls) if report_urls else []
+                    )
 
                     today = datetime.now().strftime("%Y-%m-%d")
                     if all_reports:
@@ -363,22 +377,20 @@ if __name__ == "__main__":
                             scraper.send_notification(
                                 subject=f"Senate Report {today} - Success",
                                 body=message,
-                                attachments=[report_file]
+                                attachments=[report_file],
                             )
                     else:
                         message = "No reports were successfully processed"
                         logger.error(message)
                         scraper.send_notification(
-                            subject=f"Senate Report {today} - No Reports",
-                            body=message
+                            subject=f"Senate Report {today} - No Reports", body=message
                         )
 
     except Exception as e:
         error_message = f"An error occurred: {str(e)}"
         logger.error(error_message)
-        if 'scraper' in locals() and hasattr(scraper, 'send_notification'):
+        if "scraper" in locals() and hasattr(scraper, "send_notification"):
             scraper.send_notification(
-                subject="Error - Unexpected Exception",
-                body=error_message
+                subject="Error - Unexpected Exception", body=error_message
             )
         exit(1)

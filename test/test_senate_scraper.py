@@ -9,7 +9,7 @@ from selenium.common.exceptions import TimeoutException
 class TestSenateScraper(unittest.TestCase):
     def setUp(self):
         """Set up test cases."""
-        self.patcher = patch('selenium.webdriver.Chrome')
+        self.patcher = patch("selenium.webdriver.Chrome")
         self.mock_driver = self.patcher.start()
         self.scraper = SenateScraper(headless=True)
 
@@ -22,9 +22,9 @@ class TestSenateScraper(unittest.TestCase):
         self.assertIsNotNone(self.scraper.driver)
         self.assertIsNone(self.scraper.email_client)
 
-    @patch('selenium.webdriver.support.wait.WebDriverWait')
-    @patch('selenium.webdriver.support.expected_conditions.element_to_be_clickable')
-    @patch('time.sleep')
+    @patch("selenium.webdriver.support.wait.WebDriverWait")
+    @patch("selenium.webdriver.support.expected_conditions.element_to_be_clickable")
+    @patch("time.sleep")
     def test_accept_agreement_success(self, mock_sleep, mock_ec, mock_wait):
         """Test successful agreement acceptance."""
         # Create mock checkbox
@@ -47,7 +47,7 @@ class TestSenateScraper(unittest.TestCase):
         mock_checkbox.click.assert_called_once()
         mock_sleep.assert_called_once_with(3)
 
-    @patch('selenium.webdriver.support.ui.WebDriverWait')
+    @patch("selenium.webdriver.support.ui.WebDriverWait")
     def test_accept_agreement_timeout(self, mock_wait):
         """Test agreement acceptance with timeout."""
         # Setup
@@ -86,7 +86,7 @@ class TestSenateScraper(unittest.TestCase):
             self.assertTrue(os.path.exists(filename))
 
             # Verify content
-            with open(filename, 'r', encoding='utf-8') as f:
+            with open(filename, "r", encoding="utf-8") as f:
                 saved_data = json.load(f)
             self.assertEqual(saved_data, test_reports)
 
@@ -108,7 +108,7 @@ class TestSenateScraper(unittest.TestCase):
         result = self.scraper.check_empty_results()
         self.assertFalse(result)
 
-    @patch('src.senate_scraper.EmailClient')
+    @patch("src.senate_scraper.EmailClient")
     def test_send_notification(self, mock_email_client):
         """Test sending notification."""
         # Setup
@@ -143,5 +143,5 @@ class TestSenateScraper(unittest.TestCase):
         self.assertEqual(urls[1], "http://test2.com")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

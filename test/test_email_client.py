@@ -19,7 +19,7 @@ class TestEmailClient(unittest.TestCase):
         self.assertEqual(self.client.smtp_server, "smtp.gmail.com")
         self.assertEqual(self.client.smtp_port, 587)
 
-    @patch('smtplib.SMTP')
+    @patch("smtplib.SMTP")
     def test_send_email_success(self, mock_smtp):
         """Test successful email sending."""
         # Setup
@@ -30,7 +30,7 @@ class TestEmailClient(unittest.TestCase):
         result = self.client.send_email(
             to_emails=["recipient@example.com"],
             subject="Test Subject",
-            body="Test Body"
+            body="Test Body",
         )
 
         # Assert
@@ -39,7 +39,7 @@ class TestEmailClient(unittest.TestCase):
         mock_smtp_instance.login.assert_called_once_with(self.email, self.password)
         mock_smtp_instance.sendmail.assert_called_once()
 
-    @patch('smtplib.SMTP')
+    @patch("smtplib.SMTP")
     def test_send_email_with_attachment(self, mock_smtp):
         """Test email sending with attachment."""
         # Create a temporary test file
@@ -57,7 +57,7 @@ class TestEmailClient(unittest.TestCase):
                 to_emails=["recipient@example.com"],
                 subject="Test Subject",
                 body="Test Body",
-                attachments=[test_file]
+                attachments=[test_file],
             )
 
             # Assert
@@ -69,7 +69,7 @@ class TestEmailClient(unittest.TestCase):
             if os.path.exists(test_file):
                 os.remove(test_file)
 
-    @patch('smtplib.SMTP')
+    @patch("smtplib.SMTP")
     def test_send_email_smtp_error(self, mock_smtp):
         """Test email sending with SMTP error."""
         # Setup
@@ -81,7 +81,7 @@ class TestEmailClient(unittest.TestCase):
         result = self.client.send_email(
             to_emails=["recipient@example.com"],
             subject="Test Subject",
-            body="Test Body"
+            body="Test Body",
         )
 
         # Assert
@@ -93,11 +93,10 @@ class TestEmailClient(unittest.TestCase):
             to_emails=["recipient@example.com"],
             subject="Test Subject",
             body="Test Body",
-            attachments=["nonexistent_file.txt"]
+            attachments=["nonexistent_file.txt"],
         )
         self.assertFalse(result)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
-    
