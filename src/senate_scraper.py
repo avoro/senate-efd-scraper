@@ -52,10 +52,27 @@ class SenateScraper:
             webdriver.Chrome: Configured Chrome WebDriver instance
         """
         options = webdriver.ChromeOptions()
-        if headless:
-            options.add_argument("--headless")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
+
+        # Check if CHROME_OPTIONS environment variable exists
+        if os.getenv('CHROME_OPTIONS'):
+            # Use environment variable settings
+            chrome_options = os.getenv('CHROME_OPTIONS', '').split()
+            for option in chrome_options:
+                options.add_argument(option)
+
+            # Ensure these basic options are set if not in environment
+            if '--no-sandbox' not in chrome_options:
+                options.add_argument('--no-sandbox')
+            if '--disable-dev-shm-usage' not in chrome_options:
+                options.add_argument('--disable-dev-shm-usage')
+            if headless and '--headless' not in chrome_options:
+                options.add_argument('--headless')
+        else:
+            # Use basic settings without environment variable
+            options.add_argument('--no-sandbox')
+            options.add_argument('--disable-dev-shm-usage')
+            if headless:
+                options.add_argument('--headless')
 
         return webdriver.Chrome(options=options)
 

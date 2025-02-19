@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.env
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+test/
+test_requirements.txt
+
+# Development
+.git/
+.gitignore
+.vscode/
+.idea/
+*.log
+
+# Project specific
+senate_reports_*.json
+Makefile
+README.md
+
+# Docker
+Dockerfile
+.dockerignore
+
+# Documentation
+docs/
+*.md
