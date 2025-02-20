@@ -10,13 +10,15 @@ A Python-based web scraper that automatically retrieves and processes financial 
 - JSON export of scraped data
 - Configurable headless browser operation
 - Automated report attachment to notification emails
+- Docker support for containerized deployment
+- AWS cloud deployment options with ECS, Fargate, and EventBridge scheduling
 
 ## Prerequisites
 
 - Python 3.8+
 - Gmail account (for notifications)
-
-Note: Selenium will automatically handle the installation and management of Chrome and ChromeDriver.
+- Docker (optional, for containerized deployment)
+- AWS CLI (optional, for cloud deployment)
 
 ## Installation
 
@@ -71,7 +73,64 @@ In `email_client.py`:
 - `smtp_server`: SMTP server address (default: smtp.gmail.com)
 - `smtp_port`: SMTP port (default: 587)
 
+## Docker
+
+### Prerequisites
+- Docker Desktop installed and running
+- Understanding of your system architecture (e.g., ARM64 for M1/M2 Macs, AMD64/x86_64 for Intel/AMD)
+
+### Building the Docker Image
+
+The Dockerfile is configured to use Selenium with Chrome in a containerized environment.
+
+#### For Intel/AMD (x86_64) systems:
+```bash
+docker build -t senate-scraper .
+```
+
+#### For Apple Silicon (M1/M2) Macs:
+```bash
+build --platform linux/amd64 -t senate-scraper .
+```
+
+## AWS
+
+The architecture enables a fully automated, serverless deployment of the scraper with robust scheduling capabilities and minimal maintenance overhead.
+
+```mermaid
+flowchart LR
+    subgraph AWS Cloud
+        ECR[(Amazon ECR)]
+        ECS[Amazon ECS]
+        Fargate[AWS Fargate]
+        EventBridge[Amazon EventBridge]
+        
+        ECR -->|Pull Image| ECS
+        ECS -->|Run Task| Fargate
+        EventBridge -->|Schedule Trigger| ECS
+    end
+    
+    Docker[Docker Image] -->|Push| ECR
+```
+
+### 1. Elastic Container Registry
+- Create a repository to store your Docker image
+- The repository will provide a secure location to store and distribute your container images
+- Your ECS tasks will pull the image from this repository when running
+
+### 2. Elastic Container Service with Fargate
+- Create an ECS cluster to manage your containerized application
+- Define a task definition
+- Fargate provides serverless compute for your containers, eliminating the need to manage EC2 instances
+
+### 3. EventBridge 
+- Create a rule with a cron expression to schedule the scraper
+  - Example schedule: Daily at specific times
+- The rule triggers the ECS task in Fargate
+- Enables automatic execution without manual intervention
+
 ## Security Notes
 
 1. Never commit your `.env` file to version control
 2. Use App Passwords for Gmail authentication
+3. Use AWS Secrets Manager or Parameter Store for sensitive credentials in cloud deployment
